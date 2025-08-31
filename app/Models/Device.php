@@ -20,27 +20,28 @@ class Device extends Model
     ];
 
     protected $casts = [
+        'password' => 'encrypted',
         'binary_backup_enabled' => 'boolean',
         'script_backup_enabled' => 'boolean',
     ];
 
-    protected $hidden = [
-        'password',
-    ];
-
-    public function binaryBackups(): HasMany {
+    public function binaryBackups(): HasMany
+    {
         return $this->hasMany(BinaryBackup::class);
     }
 
-    public function scriptBackups(): HasMany {
+    public function scriptBackups(): HasMany
+    {
         return $this->hasMany(ScriptBackup::class);
     }
 
-    public function createdByUser(): BelongsTo {
+    public function createdByUser(): BelongsTo
+    {
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
-    public function updatedByUser(): BelongsTo {
+    public function updatedByUser(): BelongsTo
+    {
         return $this->belongsTo(User::class, 'updated_by_user_id');
     }
 
