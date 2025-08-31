@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ScriptBackupResource extends Resource
 {
@@ -46,5 +47,15 @@ class ScriptBackupResource extends Resource
             'index' => ListScriptBackups::route('/'),
             'view' => ViewScriptBackup::route('/{record}'),
         ];
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
     }
 }

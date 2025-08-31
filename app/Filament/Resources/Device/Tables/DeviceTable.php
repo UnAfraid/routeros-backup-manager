@@ -2,14 +2,12 @@
 
 namespace App\Filament\Resources\Device\Tables;
 
-use App\Jobs\CreateBackupJob;
+use App\Filament\Resources\Device\Actions\CreateBackupAction;
 use App\Jobs\RouterOSBackup;
-use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -63,27 +61,7 @@ class DeviceTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-                Action::make('runBackup')
-                    ->label('Run Backup')
-                    ->icon('heroicon-o-arrow-path')
-                    ->requiresConfirmation()
-                    ->action(function ($record) {
-                        $recipient = auth()->user();
-
-                        try {
-                            $job = new CreateBackupJob($record);
-                            $job->handle();
-
-                            Notification::make()
-                                ->title('Created backup successfully')
-                                ->sendToDatabase($recipient);
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('Failed to create backup')
-                                ->body($e->getMessage())
-                                ->danger();
-                        }
-                    }),
+                CreateBackupAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

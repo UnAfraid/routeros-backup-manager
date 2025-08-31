@@ -6,6 +6,7 @@ use App\Filament\Resources\ScriptBackups\ScriptBackupResource;
 use App\Filament\Resources\ScriptBackups\Tables\ScriptBackupsTable;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ScriptBackupsRelationManager extends RelationManager
 {
@@ -16,5 +17,15 @@ class ScriptBackupsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return ScriptBackupsTable::configure($table);
+    }
+
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
+    protected function canEdit(Model $record): bool
+    {
+        return false;
     }
 }
