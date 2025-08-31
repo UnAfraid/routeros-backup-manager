@@ -17,8 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('address');
             $table->integer('port')->default(22);
-            $table->string('username');
-            $table->string('password');
+            $table->morphs('credential_type');
             $table->string('backup_cron_schedule')->default('0 0 * * *');
             $table->boolean('binary_backup_enabled')->default(true);
             $table->boolean('script_backup_enabled')->default(true);
@@ -33,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('router_os');
+        Schema::dropIfExists('devices');
     }
 };

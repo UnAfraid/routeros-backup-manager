@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Device extends Model
 {
@@ -12,18 +13,24 @@ class Device extends Model
         'name',
         'address',
         'port',
-        'username',
-        'password',
+        'credential_type',
+        'credential_id',
         'backup_cron_schedule',
         'binary_backup_enabled',
         'script_backup_enabled',
+        'created_by_user_id',
+        'updated_by_user_id',
     ];
 
     protected $casts = [
-        'password' => 'encrypted',
         'binary_backup_enabled' => 'boolean',
         'script_backup_enabled' => 'boolean',
     ];
+
+    public function credential(): MorphTo
+    {
+        return $this->morphTo();
+    }
 
     public function binaryBackups(): HasMany
     {

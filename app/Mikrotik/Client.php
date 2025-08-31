@@ -2,6 +2,7 @@
 
 namespace App\Mikrotik;
 
+use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Net\SFTP;
 use phpseclib3\Net\SSH2;
 
@@ -16,6 +17,11 @@ readonly class Client
 
     public function connect(): bool
     {
+        if (!empty($this->config->privateKey)) {
+            $key = PublicKeyLoader::loadPrivateKey($this->config->privateKey, $this->config->passphrase ?? false);
+            return $this->ssh->login($this->config->username, $key);
+        }
+
         return $this->ssh->login($this->config->username, $this->config->password);
     }
 
@@ -48,14 +54,21 @@ readonly class Client
     public function getFile(string $remoteFile): string
     {
         $sftp = new SFTP($this->config->address, $this->config->port);
-        if (!$sftp->login($this->config->username, $this->config->password)) {
-            throw new \Exception('Login failed');
+
+        if (!empty($this->config->privateKey)) {
+            $key = PublicKeyLoader::load($this->config->privateKey, $this->config->passphrase ?? false);
+            if (!$sftp->login($this->config->username, $key)) {
+                throw new \Exception('Login failed');
+            }
+        } else {
+            if (!$sftp->login($this->config->username, $this->config->password)) {
+                throw new \Exception('Login failed');
+            }
         }
 
         $fileContents = $sftp->get($remoteFile);
         if ($fileContents === false) {
             $sftp->disconnect();
-            dd($fileContents);
             throw new \Exception("Failed to read file {$remoteFile} from router.");
         }
         $sftp->disconnect();

@@ -30,13 +30,8 @@ class CreateBackupJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $device = $this->device;
-        $mikrotik = new Client(new Config(
-            $device->address,
-            $device->port,
-            $device->username,
-            $device->password
-        ));
+        $device = $this->device->load('credential');
+        $mikrotik = new Client(Config::fromDevice($device));
         if (!$mikrotik->connect()) {
             throw new \Exception('Failed to connect to device: ' . $device->name);
         }

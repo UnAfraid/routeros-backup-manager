@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Device\Schemas;
 
+use App\Models\PasswordCredential;
+use App\Models\PrivateKeyCredential;
+use Filament\Forms\Components\MorphToSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -27,13 +30,14 @@ class DeviceForm
                             ->required()
                             ->numeric()
                             ->default(22),
-                        TextInput::make('username')
+                        MorphToSelect::make('credential')
+                            ->types([
+                                MorphToSelect\Type::make(PasswordCredential::class)->titleAttribute('name'),
+                                MorphToSelect\Type::make(PrivateKeyCredential::class)->titleAttribute('name'),
+                            ])
                             ->required()
-                            ->default('backup'),
-                        TextInput::make('password')
-                            ->password()
-                            ->required()
-                            ->revealable(),
+                            ->preload()
+                            ->searchable(),
                     ]),
                 Section::make('Backup')->schema([
                     TextInput::make('backup_cron_schedule')

@@ -19,7 +19,12 @@ class DeviceInfolist
                         TextEntry::make('address'),
                         TextEntry::make('port')
                             ->numeric(),
-                        TextEntry::make('username'),
+                        TextEntry::make('credential_type')
+                            ->label('Credential Type')
+                            ->formatStateUsing(fn(string $state): string => str($state)->afterLast('\\')->headline()
+                            ),
+                        TextEntry::make('credential.name')
+                            ->label('Credential'),
                     ]),
                 Section::make('Backup')
                     ->schema([
