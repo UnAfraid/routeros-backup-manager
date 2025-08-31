@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Mikrotik\Client;
+use App\Mikrotik\Config;
 use App\Models\Device;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
@@ -29,55 +31,63 @@ class CreateBackupJob implements ShouldQueue
     public function handle(): void
     {
         $device = $this->device;
-        $mikrotik = new \App\Mikrotik\Client(new \App\Mikrotik\Config(
+        $mikrotik = new Client(new Config(
             $device->address,
             $device->port,
             $device->username,
             $device->password
         ));
-        $resources = $mikrotik->getResources();
-        $version = $resources['version'];
-        $date = now()->format('Y-m-d');
-        $name = 'backup_' . now()->format('Y-m-d_H-i-s');
+        if (!$mikrotik->connect()) {
+            throw new \Exception('Failed to connect to device: ' . $device->name);
+        }
 
-        if ($this->device->script_backup_enabled) {
-            $response = $mikrotik->export();
+        try {
+            $resources = $mikrotik->getResources();
+            $version = $resources['version'];
+            $date = now()->format('Y-m-d');
+            $name = 'backup_' . now()->format('Y-m-d_H-i-s');
 
-            if (!empty($response)) {
-                $this->device->scriptBackups()->create([
+            if ($this->device->script_backup_enabled) {
+                $response = $mikrotik->export();
+
+                if (!empty($response)) {
+                    $this->device->scriptBackups()->create([
+                        'name' => $name,
+                        'content' => $response,
+                        'hash' => hash('sha256', $response),
+                        'size' => mb_strlen($response),
+                        'version' => $version,
+                    ]);
+                }
+            }
+
+
+            if ($this->device->binary_backup_enabled) {
+                $response = $mikrotik->createBackup($name);
+                if (!str_contains($response, 'Configuration backup saved')) {
+                    throw new \Exception('Failed to create backup');
+                }
+                $fileName = $name . '.backup';
+                $fileContents = $mikrotik->getFile($fileName);
+
+                $filePath = "backups/{$device->id}/{$date}/{$fileName}";
+                $success = Storage::disk('local')->put($filePath, $fileContents);
+                if (!$success) {
+                    throw new \Exception('Failed to save backup to storage');
+                }
+
+                $this->device->binaryBackups()->create([
                     'name' => $name,
-                    'content' => $response,
+                    'path' => $filePath,
                     'hash' => hash('sha256', $response),
                     'size' => mb_strlen($response),
                     'version' => $version,
                 ]);
             }
+
+            info('Done');
+        } finally {
+            $mikrotik->disconnect();
         }
-
-
-        if ($this->device->binary_backup_enabled) {
-            $response = $mikrotik->createBackup($name);
-            if (!str_contains($response, 'Configuration backup saved')) {
-                throw new \Exception('Failed to create backup');
-            }
-            $fileName = $name . '.backup';
-            $fileContents = $mikrotik->getFile($fileName);
-
-            $filePath = "backups/{$device->id}/{$date}/{$fileName}";
-            $success = Storage::disk('local')->put($filePath, $fileContents);
-            if (!$success) {
-                throw new \Exception('Failed to save backup to storage');
-            }
-
-            $this->device->binaryBackups()->create([
-                'name' => $name,
-                'path' => $filePath,
-                'hash' => hash('sha256', $response),
-                'size' => mb_strlen($response),
-                'version' => $version,
-            ]);
-        }
-
-        info('Done');
     }
 }

@@ -9,6 +9,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -67,7 +68,21 @@ class DeviceTable
                     ->icon('heroicon-o-arrow-path')
                     ->requiresConfirmation()
                     ->action(function ($record) {
-                        CreateBackupJob::dispatch($record);
+                        $recipient = auth()->user();
+
+                        try {
+                            $job = new CreateBackupJob($record);
+                            $job->handle();
+
+                            Notification::make()
+                                ->title('Created backup successfully')
+                                ->sendToDatabase($recipient);
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Failed to create backup')
+                                ->body($e->getMessage())
+                                ->danger();
+                        }
                     }),
             ])
             ->toolbarActions([

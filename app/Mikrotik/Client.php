@@ -5,16 +5,23 @@ namespace App\Mikrotik;
 use phpseclib3\Net\SFTP;
 use phpseclib3\Net\SSH2;
 
-class Client
+readonly class Client
 {
-    private readonly SSH2 $ssh;
+    private SSH2 $ssh;
 
-    public function __construct(private readonly Config $config)
+    public function __construct(private Config $config)
     {
         $this->ssh = new SSH2($config->address, $config->port);
-        if (!$this->ssh->login($config->username, $config->password)) {
-            throw new \Exception('Login failed');
-        }
+    }
+
+    public function connect(): bool
+    {
+        return $this->ssh->login($this->config->username, $this->config->password);
+    }
+
+    public function disconnect(): void
+    {
+        $this->ssh->disconnect();
     }
 
     public function getResources(): array
