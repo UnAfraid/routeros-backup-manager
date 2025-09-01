@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mikrotik\Client;
 use App\Mikrotik\Config;
+use App\Models\Backup;
 use App\Models\Device;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
@@ -30,13 +31,21 @@ class CreateBackupJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $backup = Backup::create([
+            'device_id' => $this->device->id,
+            'started_at' => now(),
+            'success' => false,
+        ]);
+
         $device = $this->device->load('credential');
         $mikrotik = new Client(Config::fromDevice($device));
-        if (!$mikrotik->connect()) {
-            throw new \Exception('Failed to connect to device: ' . $device->name);
-        }
 
         try {
+            if (!$mikrotik->connect()) {
+                $backup->connection_error = true;
+                throw new \Exception('Failed to connect to device: ' . $device->name);
+            }
+
             $resources = $mikrotik->getResources();
             $version = $resources['version'];
             $date = now()->format('Y-m-d');
@@ -44,16 +53,18 @@ class CreateBackupJob implements ShouldQueue
 
             if ($this->device->script_backup_enabled) {
                 $response = $mikrotik->export();
-
-                if (!empty($response)) {
-                    $this->device->scriptBackups()->create([
-                        'name' => $name,
-                        'content' => $response,
-                        'hash' => hash('sha256', $response),
-                        'size' => mb_strlen($response),
-                        'version' => $version,
-                    ]);
+                if (empty($response)) {
+                    throw new \Exception('Failed to export configuration');
                 }
+
+                $scriptBackup = $this->device->scriptBackups()->create([
+                    'name' => $name,
+                    'content' => $response,
+                    'hash' => hash('sha256', $response),
+                    'size' => mb_strlen($response),
+                    'version' => $version,
+                ]);
+                $backup->script_backup_id = $scriptBackup->id;
             }
 
 
@@ -62,6 +73,7 @@ class CreateBackupJob implements ShouldQueue
                 if (!str_contains($response, 'Configuration backup saved')) {
                     throw new \Exception('Failed to create backup');
                 }
+
                 $fileName = $name . '.backup';
                 $fileContents = $mikrotik->getFile($fileName);
 
@@ -71,18 +83,24 @@ class CreateBackupJob implements ShouldQueue
                     throw new \Exception('Failed to save backup to storage');
                 }
 
-                $this->device->binaryBackups()->create([
+                $binaryBackup = $this->device->binaryBackups()->create([
                     'name' => $name,
                     'path' => $filePath,
                     'hash' => hash('sha256', $response),
                     'size' => mb_strlen($response),
                     'version' => $version,
                 ]);
+                $backup->binary_backup_id = $binaryBackup->id;
             }
 
-            info('Done');
+            $backup->success = true;
+        } catch (\Exception $e) {
+            $backup->error_message = $e->getMessage();
+            $backup->success = false;
         } finally {
+            $backup->finished_at = now();
             $mikrotik->disconnect();
+            $backup->save();
         }
     }
 }

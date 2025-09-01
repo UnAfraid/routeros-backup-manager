@@ -42,6 +42,11 @@ class Device extends Model
         return $this->hasMany(ScriptBackup::class);
     }
 
+    public function backups(): HasMany
+    {
+        return $this->hasMany(Backup::class);
+    }
+
     public function createdByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');

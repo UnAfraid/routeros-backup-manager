@@ -6,6 +6,7 @@ use App\Filament\Resources\BinaryBackups\Pages\CreateBinaryBackup;
 use App\Filament\Resources\BinaryBackups\Pages\EditBinaryBackup;
 use App\Filament\Resources\BinaryBackups\Pages\ListBinaryBackups;
 use App\Filament\Resources\BinaryBackups\Pages\ViewBinaryBackup;
+use App\Filament\Resources\BinaryBackups\RelationManagers\BackupRelationManager;
 use App\Filament\Resources\BinaryBackups\Schemas\BinaryBackupForm;
 use App\Filament\Resources\BinaryBackups\Schemas\BinaryBackupInfolist;
 use App\Filament\Resources\BinaryBackups\Tables\BinaryBackupsTable;
@@ -26,7 +27,7 @@ class BinaryBackupResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return BinaryBackupInfolist::configure($schema);
+        return BinaryBackupInfolist::configure($schema)->live();
     }
 
     public static function table(Table $table): Table
@@ -37,7 +38,7 @@ class BinaryBackupResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            BackupRelationManager::class,
         ];
     }
 

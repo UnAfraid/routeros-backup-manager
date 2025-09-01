@@ -6,6 +6,7 @@ use App\Filament\Resources\Device\Pages\CreateDevice;
 use App\Filament\Resources\Device\Pages\EditDevice;
 use App\Filament\Resources\Device\Pages\ListDevice;
 use App\Filament\Resources\Device\Pages\ViewDevice;
+use App\Filament\Resources\Device\RelationManagers\BackupsRelationManager;
 use App\Filament\Resources\Device\RelationManagers\BinaryBackupsRelationManager;
 use App\Filament\Resources\Device\RelationManagers\ScriptBackupsRelationManager;
 use App\Filament\Resources\Device\Schemas\DeviceForm;
@@ -42,6 +43,7 @@ class DeviceResource extends Resource
     public static function getRelations(): array
     {
         return [
+            BackupsRelationManager::class,
             BinaryBackupsRelationManager::class,
             ScriptBackupsRelationManager::class,
         ];
