@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Device\Schemas;
 
+use App\Filament\Resources\PasswordCredentials\Schemas\PasswordCredentialForm;
+use App\Filament\Resources\PrivateKeyCredentials\Schemas\PrivateKeyCredentialForm;
 use App\Models\PasswordCredential;
 use App\Models\PrivateKeyCredential;
 use Filament\Forms\Components\MorphToSelect;
@@ -32,8 +34,18 @@ class DeviceForm
                             ->default(22),
                         MorphToSelect::make('credential')
                             ->types([
-                                MorphToSelect\Type::make(PasswordCredential::class)->titleAttribute('name'),
-                                MorphToSelect\Type::make(PrivateKeyCredential::class)->titleAttribute('name'),
+                                MorphToSelect\Type::make(PasswordCredential::class)
+                                    ->titleAttribute('name')
+                                    ->modifyKeySelectUsing(fn(Select $select): Select => $select
+                                        ->createOptionForm(fn(Schema $schema): Schema => PasswordCredentialForm::configure($schema))
+                                        ->createOptionUsing(fn(array $data): int => PasswordCredential::create($data)->getKey()),
+                                    ),
+                                MorphToSelect\Type::make(PrivateKeyCredential::class)
+                                    ->titleAttribute('name')
+                                    ->modifyKeySelectUsing(fn(Select $select): Select => $select
+                                        ->createOptionForm(fn(Schema $schema): Schema => PrivateKeyCredentialForm::configure($schema))
+                                        ->createOptionUsing(fn(array $data): int => PrivateKeyCredential::create($data)->getKey()),
+                                    ),
                             ])
                             ->required()
                             ->preload()
