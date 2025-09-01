@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Device\Pages;
 
+use App\Filament\Resources\Device\Actions\CreateBackupAction;
 use App\Filament\Resources\Device\DeviceResource;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -14,6 +15,7 @@ class ViewDevice extends ViewRecord
     {
         return [
             EditAction::make(),
+            CreateBackupAction::make(),
         ];
     }
 }
