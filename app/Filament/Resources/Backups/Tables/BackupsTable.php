@@ -63,13 +63,13 @@ class BackupsTable
                     ->label('Binary backup')
                     ->searchable()
                     ->toggleable()
-                    ->url(fn($record) => BinaryBackupResource::getUrl('view', ['record' => $record->binaryBackup]))
+                    ->url(fn($record) => !is_null($record->binaryBackup) ? BinaryBackupResource::getUrl('view', ['record' => $record->binaryBackup]) : null)
                     ->color('warning'),
                 TextColumn::make('scriptBackup.name')
                     ->label('Script backup')
                     ->searchable()
                     ->toggleable()
-                    ->url(fn($record) => ScriptBackupResource::getUrl('view', ['record' => $record->scriptBackup]))
+                    ->url(fn($record) => !is_null($record->scriptBackup) ? ScriptBackupResource::getUrl('view', ['record' => $record->scriptBackup]) : null)
                     ->color('warning'),
                 TextColumn::make('created_at')
                     ->dateTime()
