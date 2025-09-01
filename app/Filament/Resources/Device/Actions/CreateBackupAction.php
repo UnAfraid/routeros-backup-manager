@@ -13,7 +13,6 @@ class CreateBackupAction
         return Action::make($name)
             ->label('Run Backup')
             ->icon('heroicon-o-arrow-path')
-            ->requiresConfirmation()
             ->action(function ($record) {
                 $recipient = auth()->user();
 
@@ -21,14 +20,18 @@ class CreateBackupAction
                     $job = new CreateBackupJob($record);
                     $job->handle();
 
-                    Notification::make()
-                        ->title('Created backup successfully')
-                        ->sendToDatabase($recipient);
+                    $recipient->notify(
+                        Notification::make()
+                            ->title('Created backup successfully')
+                            ->toDatabase()
+                    );
                 } catch (\Exception $e) {
-                    Notification::make()
+                    $recipient->notify(Notification::make()
                         ->title('Failed to create backup')
                         ->body($e->getMessage())
-                        ->danger();
+                        ->danger()
+                        ->toDatabase()
+                    );
                 }
             });
     }
