@@ -19,19 +19,21 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        $panel
+        return $panel
             ->default()
             ->id('admin')
             ->path('/')
             ->login()
             ->passwordReset()
             ->profile()
+            ->when(fn(): bool => !app()->runningInConsole() && Schema::hasTable('users') && User::doesntExist(), fn(Panel $panel) => $panel->registration())
             ->colors([
                 'primary' => Color::Orange,
             ])
@@ -65,10 +67,5 @@ class AdminPanelProvider extends PanelProvider
                     EmailAuthentication::make(),
                 ]
             );
-
-        if (User::doesntExist()) {
-            $panel->registration();
-        }
-        return $panel;
     }
 }
