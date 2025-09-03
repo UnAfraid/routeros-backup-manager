@@ -2,8 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Mikrotik\Client;
 use App\Mikrotik\Config;
+use App\Mikrotik\MikrotikConnectionException;
+use App\Mikrotik\SftpClient;
+use App\Mikrotik\SshClient;
 use App\Models\Backup;
 use App\Models\Device;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,30 +33,95 @@ class CreateBackupJob implements ShouldQueue
      */
     public function handle(): void
     {
+        if (!$this->device->script_backup_enabled &&
+            !$this->device->binary_backup_enabled) {
+            return;
+        }
+
+        $device = $this->device->load('credential');
+        $date = now()->format('Y-m-d');
+        $name = 'backup_' . now()->format('Y-m-d_H-i-s');
+
         $backup = Backup::create([
             'device_id' => $this->device->id,
             'started_at' => now(),
             'success' => false,
         ]);
+        try {
+            // Create the backups
+            $version = $this->createBackups($device, $name);
 
-        $device = $this->device->load('credential');
-        $mikrotik = new Client(Config::fromDevice($device));
+            // Download the backups
+            $this->downloadBackups($device, $backup, $name, $version, $date);
+
+            $backup->success = true;
+        } catch (MikrotikConnectionException $e) {
+            $backup->connection_error = true;
+            $backup->error_message = $e->getMessage();
+            $backup->success = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $backup->error_message = $e->getMessage();
+            $backup->success = false;
+            throw $e;
+        } finally {
+            $backup->finished_at = now();
+            $backup->save();
+        }
+    }
+
+    /**
+     * @param Model|Device $device
+     * @param string $name
+     * @return string version
+     * @throws \Exception
+     */
+    public function createBackups(Model|Device $device, string $name): string
+    {
+        $sshClient = new SshClient(Config::fromDevice($device));
 
         try {
-            if (!$mikrotik->connect()) {
-                $backup->connection_error = true;
-                throw new \Exception('Failed to connect to device: ' . $device->name);
-            }
+            $sshClient->connect();
 
-            $resources = $mikrotik->getResources();
+            $resources = $sshClient->getResources();
             $version = $resources['version'];
-            $date = now()->format('Y-m-d');
-            $name = 'backup_' . now()->format('Y-m-d_H-i-s');
 
             if ($this->device->script_backup_enabled) {
-                $response = $mikrotik->export();
+                $sshClient->export($name);
+            }
+
+            if ($this->device->binary_backup_enabled) {
+                $response = $sshClient->createBackup($name);
+                if (!str_contains($response, 'Configuration backup saved')) {
+                    throw new \Exception('Failed to create backup');
+                }
+            }
+        } finally {
+            $sshClient->disconnect();
+        }
+        return $version;
+    }
+
+    /**
+     * @param Model|Device $device
+     * @param Model $backup
+     * @param string $name
+     * @param string $version
+     * @param string $date
+     * @return void
+     * @throws \Exception
+     */
+    public function downloadBackups(Model|Device $device, Model $backup, string $name, string $version, string $date): void
+    {
+        $sftpClient = new SftpClient(Config::fromDevice($device));
+        try {
+            $sftpClient->connect();
+
+            if ($this->device->script_backup_enabled) {
+                $fileName = $name . '.rsc';
+                $response = $sftpClient->getFile($fileName);
                 if (empty($response)) {
-                    throw new \Exception('Failed to export configuration');
+                    throw new \Exception('Failed to download script backup');
                 }
 
                 $scriptBackup = $this->device->scriptBackups()->create([
@@ -67,20 +134,17 @@ class CreateBackupJob implements ShouldQueue
                 $backup->script_backup_id = $scriptBackup->id;
             }
 
-
             if ($this->device->binary_backup_enabled) {
-                $response = $mikrotik->createBackup($name);
-                if (!str_contains($response, 'Configuration backup saved')) {
-                    throw new \Exception('Failed to create backup');
-                }
-
                 $fileName = $name . '.backup';
-                $fileContents = $mikrotik->getFile($fileName);
+                $fileContents = $sftpClient->getFile($fileName);
+                if (empty($response)) {
+                    throw new \Exception('Failed to download binary backup');
+                }
 
                 $filePath = "backups/{$device->id}/{$date}/{$fileName}";
                 $success = Storage::disk('local')->put($filePath, $fileContents);
                 if (!$success) {
-                    throw new \Exception('Failed to save backup to storage');
+                    throw new \Exception('Failed to save binary backup to storage');
                 }
 
                 $binaryBackup = $this->device->binaryBackups()->create([
@@ -92,15 +156,8 @@ class CreateBackupJob implements ShouldQueue
                 ]);
                 $backup->binary_backup_id = $binaryBackup->id;
             }
-
-            $backup->success = true;
-        } catch (\Exception $e) {
-            $backup->error_message = $e->getMessage();
-            $backup->success = false;
         } finally {
-            $backup->finished_at = now();
-            $mikrotik->disconnect();
-            $backup->save();
+            $sftpClient->disconnect();
         }
     }
 }
