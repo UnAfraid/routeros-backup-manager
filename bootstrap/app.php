@@ -9,17 +9,17 @@ use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule): void {
-//        Device::all()->each(function (Device $routerOS) use ($schedule) {
-//            $schedule
-//                ->job(new CreateBackupJob($routerOS))
-//                ->cron($routerOS->backup_cron_schedule)
-//                ->name("backup-{$routerOS->id}");
-//        });
+        Device::all()->each(function (Device $device) use ($schedule) {
+            $schedule
+                ->job(new CreateBackupJob($device))
+                ->cron($device->backup_cron_schedule)
+                ->name("backup-{$device->id}");
+        });
     })
     ->withMiddleware(function (Middleware $middleware): void {
         //
