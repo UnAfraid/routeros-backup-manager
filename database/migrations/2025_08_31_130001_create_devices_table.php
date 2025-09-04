@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('address');
             $table->integer('port')->default(22);
-            $table->morphs('credential_type');
+            $table->morphs('credential');
             $table->string('backup_cron_schedule')->default('0 0 * * *');
             $table->boolean('binary_backup_enabled')->default(true);
             $table->boolean('script_backup_enabled')->default(true);
