@@ -6,6 +6,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Log;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,16 +15,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule): void {
-        if (app()->runningInConsole()) {
-            return;
+        try {
+            Device::all()->each(function (Device $device) use ($schedule) {
+                $schedule
+                    ->job(new CreateBackupJob($device))
+                    ->cron($device->backup_cron_schedule)
+                    ->name("backup-{$device->id}");
+            });
+        } catch (\Exception $e) {
+            // During composer install, the database is not yet ready.
+            Log::warning("Failed to register device schedule", ["error" => $e->getMessage()]);
         }
-
-        Device::all()->each(function (Device $device) use ($schedule) {
-            $schedule
-                ->job(new CreateBackupJob($device))
-                ->cron($device->backup_cron_schedule)
-                ->name("backup-{$device->id}");
-        });
     })
     ->withMiddleware(function (Middleware $middleware): void {
         //
