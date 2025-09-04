@@ -33,7 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->passwordReset()
             ->profile()
-            ->when(fn(): bool => !app()->runningInConsole() && Schema::hasTable('users') && User::doesntExist(), fn(Panel $panel) => $panel->registration())
+            ->when(!app()->runningInConsole() && Schema::hasTable('users') && User::doesntExist(), fn(Panel $panel) => $panel->registration())
             ->colors([
                 'primary' => Color::Orange,
             ])
